@@ -32,10 +32,10 @@ type op = { action   : string;
             add_list : SymbolSet.t;
             del_list : SymbolSet.t   }
 
-let appropriate goal op = SymbolSet.mem goal op.add_list
+let appropriate_p goal op = SymbolSet.mem goal op.add_list
 
 let rec achieve ops goal = 
-  let appropriate_goals = List.filter (appropriate goal) ops in
+  let appropriate_goals = List.filter (appropriate_p goal) ops in
   SymbolSet.mem goal !state || List.exists (apply_op ops) appropriate_goals
 and apply_op ops op =  
   if SymbolSet.for_all (achieve ops) op.preconds then
