@@ -23,11 +23,12 @@ need to declare actions as symbols after all.
 module SymbolSet = Set.Make(struct type t = Symbol.symbol
                                    let compare = Symbol.compare end)
 
-(** The empty set of symbols *)
-let e = SymbolSet.empty
+(** The type for a state condition *)
+type statecond = Symbol of Symbol.symbol | Exec of string
 
-(** The type for state elements (a "state point") *)
-type statept = Symbol of Symbol.symbol | Exec of string
+(** A set of state conditions *)
+module CondSet = Set.Make(struct type t = statecond
+                                 let compare = compare end)
 
 
 (*** GPS code from Section 4.11 ***)
@@ -35,14 +36,16 @@ type statept = Symbol of Symbol.symbol | Exec of string
 (** Type for operations *)
 type op = { action   : string; 
             preconds : SymbolSet.t;
-            add_list : SymbolSet.t;
-            del_list : SymbolSet.t   }
+            add_list : CondSet.t;
+            del_list : CondSet.t   }
 
 
-let appropriate goal op = SymbolSet.mem goal op.add_list
+let appropriate_p goal op = CondSet.mem (Symbol goal) op.add_list
+
+(******************  Change frontier *****)
 
 let rec achieve ops goal = 
-  let appropriate_goals = List.filter (appropriate goal) ops in
+  let appropriate_goals = List.filter (appropriate_p goal) ops in
   SymbolSet.mem goal !state || List.exists (apply_op ops) appropriate_goals
 and apply_op ops op =  
   if SymbolSet.for_all (achieve ops) op.preconds then
