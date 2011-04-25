@@ -70,12 +70,16 @@ let executing_p x =
     Exec _ -> true
   | _ -> false
 
-let op action ~preconds ~add_list ~del_list = 
-  { action=action; preconds=preconds; add_list=add_list; del_list=del_list }
-
 let convert_op op = 
   if List.exists executing_p op.add_list then op
   else { op with add_list = (Exec op.action) :: op.add_list }
+
+let op action ~preconds ~add_list ~del_list = 
+  convert_op { action=action; preconds=preconds; 
+               add_list=symbols_cond add_list; del_list=symbols_cond del_list }
+
+let op2 action ~preconds ~add_list ~del_list = 
+  convert_op { action=action; preconds=preconds; add_list=add_list; del_list=del_list }
 
 
 let appropriate_p goal op = List.mem (Symbol goal) op.add_list
@@ -159,3 +163,51 @@ let exstate1 = symbols_cond [son_at_home; car_needs_battery; have_money; have_ph
 
    Try it with debug ["gps"]
 *)
+
+
+(*** Code for the monkey and bananas problem, Section 4.12 ***)
+
+(* Symbols *)
+let chair_at_middle_room = Symbol.create "chair at middle room"
+let at_middle_room       = Symbol.create "at middle room"
+let on_floor             = Symbol.create "on floor"
+let at_bananas           = Symbol.create "at bananas"
+let on_chair             = Symbol.create "on chair"
+let chair_at_door        = Symbol.create "chair at door"
+let at_door              = Symbol.create "at door"
+let empty_handed         = Symbol.create "empty handed"
+let has_ball             = Symbol.create "has ball"
+let has_bananas          = Symbol.create "has bananas"
+let hungry               = Symbol.create "hungry"
+let not_hungry           = Symbol.create "not hungry"
+
+
+let banana_ops = 
+  [ op "climb on chair" 
+       ~preconds:[chair_at_middle_room; at_middle_room; on_floor]
+       ~add_list:[at_bananas; on_chair]
+       ~del_list:[at_middle_room; on_floor];
+    op "push chair from door to middle room"
+       ~preconds:[chair_at_door; at_door]
+       ~add_list:[chair_at_middle_room; at_middle_room]
+       ~del_list:[chair_at_door; at_door];
+    op "walk from door to middle room"
+       ~preconds:[at_door; on_floor]
+       ~add_list:[at_middle_room]
+       ~del_list:[at_door];
+    op "grasp bananas"
+       ~preconds:[at_bananas; empty_handed]
+       ~add_list:[has_bananas]
+       ~del_list:[empty_handed];
+    op "drop ball"
+       ~preconds:[has_ball]
+       ~add_list:[empty_handed]
+       ~del_list:[has_ball];
+    op "eat bananas"
+       ~preconds:[has_bananas]
+       ~add_list:[empty_handed; not_hungry]
+       ~del_list:[has_bananas; hungry] ]
+
+
+(** An example state for the monkey and bananas problem *)
+let banana_state = symbols_cond [at_door; on_floor; has_ball; hungry; chair_at_door]
