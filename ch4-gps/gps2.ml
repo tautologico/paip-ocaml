@@ -10,25 +10,10 @@
  * 
  *)
 
-(* 
-
-We need to form lists [executing; stuff] with actions, so maybe we'll 
-need to declare actions as symbols after all.   
-
-*)
-
 (* Compile with ocamlc -I .. ../symbol.mli ../symbol.ml gps1.ml *)
-
-(** A set of symbols *) 
-module SymbolSet = Set.Make(struct type t = Symbol.symbol
-                                   let compare = Symbol.compare end)
 
 (** The type for a state condition *)
 type statecond = Symbol of Symbol.symbol | Exec of string | Start
-
-(** A set of state conditions *)
-module CondSet = Set.Make(struct type t = statecond
-                                 let compare = compare end)
 
 (*** Some auxiliary functions ***)
 let remove i l = List.fold_right (fun x xs -> if x = i then xs else x :: xs) l []
@@ -44,6 +29,10 @@ let rec find_op fn l = match l with
 let subsetp l1 l2 = List.for_all (fun x -> List.mem x l2) l1
 
 let remove_if fn l = List.filter (fun x -> not (fn x)) l
+
+(** Injection function from symbols to state conditions *)
+let symbols_cond l = List.map (fun s -> Symbol s) l
+
 
 (*** Debug code from Section 4.10 ***)
 let dbg_ids = ref []
@@ -75,6 +64,19 @@ type op = { action   : string;
             add_list : statecond list;
             del_list : statecond list  }
 
+(** Build an op including the action as an executing state in add_list *)
+let executing_p x = 
+  match x with
+    Exec _ -> true
+  | _ -> false
+
+let op action ~preconds ~add_list ~del_list = 
+  { action=action; preconds=preconds; add_list=add_list; del_list=del_list }
+
+let convert_op op = 
+  if List.exists executing_p op.add_list then op
+  else { op with add_list = (Exec op.action) :: op.add_list }
+
 
 let appropriate_p goal op = List.mem (Symbol goal) op.add_list
 
@@ -97,13 +99,15 @@ and apply_op state goal op goal_stack ops =
     | state2 -> 
       dbg_indent "gps" (List.length goal_stack) ("Action: " ^ op.action); 
       (remove_if (fun x -> List.mem x op.del_list) state2) @ op.add_list
-      
 
-(********** Change frontier *****)
-let gps st goals ops = 
-  let _ = state := st in
-  List.for_all (achieve ops) goals
+(* Should we make the goals a list of stateconds? *)      
+let gps state goals ops = 
+  let final_state = achieve_all (Start :: state) goals [] ops in
+  remove_if (function Symbol _ -> true | _ -> false) final_state
 
+let gpsl ~state ~goals ~ops = 
+  let final_state = achieve_all (Start :: state) goals [] ops in
+  remove_if (function Symbol _ -> true | _ -> false) final_state
 
 (*** Testing code from Section 4.4 ***)
 
@@ -119,5 +123,39 @@ let have_phone_book    = Symbol.create "have phone book"
 let have_money         = Symbol.create "have money"
 let in_communication_with_shop = Symbol.create "in communication with shop"
 
-(* Helper function for creating symbol sets *) 
-let symbols l = List.fold_right SymbolSet.add l e
+
+let school_ops = List.map convert_op 
+  [ { action = "Drive son to school";
+      preconds = [son_at_home; car_works];
+      add_list = symbols_cond [son_at_school];
+      del_list = symbols_cond [son_at_home]; };
+    { action = "Shop installs battery";
+      preconds = [car_needs_battery; shop_knows_problem; shop_has_money];
+      add_list = symbols_cond [car_works];
+      del_list = [] };
+    { action = "Tell shop the problem";
+      preconds = [in_communication_with_shop];
+      add_list = symbols_cond [shop_knows_problem];
+      del_list = [] };
+    { action = "Telephone shop";
+      preconds = [know_phone_number];
+      add_list = symbols_cond [in_communication_with_shop];
+      del_list = [] };
+    { action = "Look up number";
+      preconds = [have_phone_book];
+      add_list = symbols_cond [know_phone_number];
+      del_list = [] };
+    { action = "Give shop money";
+      preconds = [have_money];
+      add_list = symbols_cond [shop_has_money];
+      del_list = symbols_cond [have_money] } ]
+
+(* state for the first example *)
+let exstate1 = symbols_cond [son_at_home; car_needs_battery; have_money; have_phone_book]
+
+(* 
+   Example test:
+   gpsl ~state:exstate1 ~goals:[son_at_school] ~ops:school_ops
+
+   Try it with debug ["gps"]
+*)
