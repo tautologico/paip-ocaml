@@ -1,0 +1,20 @@
+#+TITLE: Notes for the book Paradigms of Artificial Programming, Norvig
+
+* Chapter 4: GPS
+
+** Section 4.3 - State 3: Implementation
+
+The GPS code in this section relies on sets being represented as lists, and 
+thus maintaining some kind of order. If we represent sets with structures 
+that don't keep items in the order of insertion, the goal "give shop money" 
+in the school example can be achieved right at the start of the example if 
+the "have money" condition is present. This seems wrong, but is valid if the 
+only precondition for goal "give shop money" is "have money", as it is in 
+the book. 
+
+
+** Section 4.13 - The Maze Searching Domain
+
+The problem is represented in a way to find the path in the example 
+without any backtracking. GPS does not do backtracking. 
+
