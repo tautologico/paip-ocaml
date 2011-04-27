@@ -75,10 +75,12 @@ let executing_p x =
     Exec _ -> true
   | _ -> false
 
+(** Convert an operator to include the executing action in its add-list *)
 let convert_op op = 
   if List.exists executing_p op.add_list then op
   else { op with add_list = (Exec op.action) :: op.add_list }
 
+(** Constructor for operations *)
 let op action ~preconds ~add_list ~del_list = 
   convert_op { action=action; preconds=symbols_cond preconds; 
                add_list=symbols_cond add_list; del_list=symbols_cond del_list }
@@ -86,21 +88,25 @@ let op action ~preconds ~add_list ~del_list =
 let op2 action ~preconds ~add_list ~del_list = 
   convert_op { action=action; preconds=preconds; add_list=add_list; del_list=del_list }
 
-
+(** An op is appropriate for a goal if it is in its add-list *)
 let appropriate_p goal op = List.mem goal op.add_list
 
+(** Achieve each goal, and make sure they still hold in the end *)
 let rec achieve_all state goals goal_stack ops = 
   let new_state = List.fold_left 
     (fun s g -> match s with [] -> [] | _ -> achieve s g goal_stack ops) state goals in
   match new_state with
       [] -> []
     | _ -> if subsetp goals new_state then new_state else []  
+(** A goal is achieved if it already holds, 
+    or if there is an appropriate op for it that is applicable *)
 and achieve state goal goal_stack ops = 
   dbg_indent "gps" (List.length goal_stack) ("Goal: " ^ cond_to_str goal);
   if List.mem goal state then state
   else if List.mem goal goal_stack then []
   else let appropriate_goals = List.filter (appropriate_p goal) ops in
        find_op (fun op -> apply_op state goal op goal_stack ops) appropriate_goals
+(** Return a new, transformed state if op is applicable *)
 and apply_op state goal op goal_stack ops = 
   dbg_indent "gps" (List.length goal_stack) ("Consider: " ^ op.action);
   match achieve_all state op.preconds (goal :: goal_stack) ops with
