@@ -33,6 +33,11 @@ let remove_if fn l = List.filter (fun x -> not (fn x)) l
 (** Injection function from symbols to state conditions *)
 let symbols_cond l = List.map (fun s -> Symbol s) l
 
+(** String representation of state conditions *)
+let cond_to_str sc = match sc with
+    Symbol s -> Symbol.str s
+  | Exec s -> "Executing " ^ s
+  | Start -> "Start State"
 
 (*** Debug code from Section 4.10 ***)
 let dbg_ids = ref []
@@ -60,7 +65,7 @@ let dbg_indent id indent str =
 
 (** Type for operations *)
 type op = { action   : string; 
-            preconds : Symbol.symbol list;
+            preconds : statecond list;
             add_list : statecond list;
             del_list : statecond list  }
 
@@ -75,24 +80,24 @@ let convert_op op =
   else { op with add_list = (Exec op.action) :: op.add_list }
 
 let op action ~preconds ~add_list ~del_list = 
-  convert_op { action=action; preconds=preconds; 
+  convert_op { action=action; preconds=symbols_cond preconds; 
                add_list=symbols_cond add_list; del_list=symbols_cond del_list }
 
 let op2 action ~preconds ~add_list ~del_list = 
   convert_op { action=action; preconds=preconds; add_list=add_list; del_list=del_list }
 
 
-let appropriate_p goal op = List.mem (Symbol goal) op.add_list
+let appropriate_p goal op = List.mem goal op.add_list
 
 let rec achieve_all state goals goal_stack ops = 
   let new_state = List.fold_left 
     (fun s g -> match s with [] -> [] | _ -> achieve s g goal_stack ops) state goals in
   match new_state with
       [] -> []
-    | _ -> if subsetp (List.map (fun s -> Symbol s) goals) new_state then new_state else []  
+    | _ -> if subsetp goals new_state then new_state else []  
 and achieve state goal goal_stack ops = 
-  dbg_indent "gps" (List.length goal_stack) ("Goal: " ^ Symbol.str goal);
-  if List.mem (Symbol goal) state then state
+  dbg_indent "gps" (List.length goal_stack) ("Goal: " ^ cond_to_str goal);
+  if List.mem goal state then state
   else if List.mem goal goal_stack then []
   else let appropriate_goals = List.filter (appropriate_p goal) ops in
        find_op (fun op -> apply_op state goal op goal_stack ops) appropriate_goals
@@ -104,14 +109,15 @@ and apply_op state goal op goal_stack ops =
       dbg_indent "gps" (List.length goal_stack) ("Action: " ^ op.action); 
       (remove_if (fun x -> List.mem x op.del_list) state2) @ op.add_list
 
-(* Should we make the goals a list of stateconds? *)      
+(** General Problem Solver: from state, achieve goals using ops *)
 let gps state goals ops = 
-  let final_state = achieve_all (Start :: state) goals [] ops in
-  remove_if (function Symbol _ -> true | _ -> false) final_state
+  let final_state = achieve_all (Start :: state) (symbols_cond goals) [] ops in
+  remove_if (function Exec _ -> false | _ -> true) final_state
 
+(** General Problem Solver: from state, achieve goals using ops *)
 let gpsl ~state ~goals ~ops = 
-  let final_state = achieve_all (Start :: state) goals [] ops in
-  remove_if (function Symbol _ -> true | _ -> false) final_state
+  gps state goals ops
+
 
 (*** Testing code from Section 4.4 ***)
 
@@ -130,36 +136,36 @@ let in_communication_with_shop = Symbol.create "in communication with shop"
 
 let school_ops = List.map convert_op 
   [ { action = "Drive son to school";
-      preconds = [son_at_home; car_works];
+      preconds = symbols_cond [son_at_home; car_works];
       add_list = symbols_cond [son_at_school];
       del_list = symbols_cond [son_at_home]; };
     { action = "Shop installs battery";
-      preconds = [car_needs_battery; shop_knows_problem; shop_has_money];
+      preconds = symbols_cond [car_needs_battery; shop_knows_problem; shop_has_money];
       add_list = symbols_cond [car_works];
       del_list = [] };
     { action = "Tell shop the problem";
-      preconds = [in_communication_with_shop];
+      preconds = symbols_cond [in_communication_with_shop];
       add_list = symbols_cond [shop_knows_problem];
       del_list = [] };
     { action = "Telephone shop";
-      preconds = [know_phone_number];
+      preconds = symbols_cond [know_phone_number];
       add_list = symbols_cond [in_communication_with_shop];
       del_list = [] };
     { action = "Look up number";
-      preconds = [have_phone_book];
+      preconds = symbols_cond [have_phone_book];
       add_list = symbols_cond [know_phone_number];
       del_list = [] };
     { action = "Give shop money";
-      preconds = [have_money];
+      preconds = symbols_cond [have_money];
       add_list = symbols_cond [shop_has_money];
       del_list = symbols_cond [have_money] } ]
 
-(* state for the first example *)
-let exstate1 = symbols_cond [son_at_home; car_needs_battery; have_money; have_phone_book]
+(** Example state for the "driving son to school" problem *)
+let school_state = symbols_cond [son_at_home; car_needs_battery; have_money; have_phone_book]
 
 (* 
    Example test:
-   gpsl ~state:exstate1 ~goals:[son_at_school] ~ops:school_ops
+   gpsl ~state:school_state ~goals:[son_at_school] ~ops:school_ops
 
    Try it with debug ["gps"]
 *)
@@ -211,3 +217,10 @@ let banana_ops =
 
 (** An example state for the monkey and bananas problem *)
 let banana_state = symbols_cond [at_door; on_floor; has_ball; hungry; chair_at_door]
+
+(* 
+   Example test:
+   gpsl ~state:banana_state ~goals:[not_hungry] ~ops:banana_ops
+
+   Try it with debug ["gps"]
+*)
