@@ -19,3 +19,10 @@ let split ?(seps=" ") s =
     if (i+j) = l then [(i,j)] else 
       if String.contains seps s.[i+j] then (i,j) :: sep (i+j) else nonsep i (j+1) in
   List.map (fun (i, l) -> String.sub s i l) (sep 0)
+
+
+(** Join a list of strings into a single string, using spaces as separators. *)
+let rec join sl = match sl with
+    [] -> ""
+  | [s] -> s
+  | s :: sl' -> s ^ " " ^ join sl'
