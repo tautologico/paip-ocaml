@@ -26,3 +26,27 @@ let rec join sl = match sl with
     [] -> ""
   | [s] -> s
   | s :: sl' -> s ^ " " ^ join sl'
+
+(** Drops n items from lst. *)
+let rec drop lst n = 
+  match lst, n with
+      (_, 0) -> lst
+    | ([], _) -> raise Not_found
+    | (x :: xs, _) -> drop xs (n-1)
+
+(** Take the first n items from lst. *)
+let rec take lst n = 
+  match lst, n with
+      (_, 0) -> []
+    | ([], _) -> raise Not_found
+    | (x :: xs, _) -> x :: take xs (n-1)
+
+(** Find the position of i in lst, starting at index start. Raises Not_found if i is not in lst. *)
+let position i lst start = 
+  let rec pos_aux lst c = 
+    match lst with
+        [] -> raise Not_found
+      | l :: ls when i = l -> c
+      | _ :: ls -> pos_aux ls (c+1) in
+  (pos_aux (drop lst start) 0) + start
+

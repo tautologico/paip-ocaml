@@ -36,9 +36,10 @@ let extend_bindings var value bindings =
       [("", "")] -> [(var, value)]   (*** Duplication! ***)
     | _ -> (var, value) :: bindings
 
-(** Effects substitution given a list and an assoc list. *)
+(** Effects substitution in lst given a binding list.
+    Raises Not_found if the pattern contains variables without any bindings. *)
 let sublis bindings lst = 
-  let subst i = if variable_p i then get_binding i bindings else i in  (* assume there's a binding for all vars *)
+  let subst i = if variable_p i then get_binding i bindings else i in
   List.fold_right (fun i ls -> subst i :: ls) lst []
 
 (** Is this a segment matching pattern: a string beginning with ?* *)
@@ -52,21 +53,33 @@ let match_variable var input bindings =
   with Not_found -> extend_bindings var input bindings
 
 (** Match a single pattern against input. Return remaining input and (possibly updated) bindings. *)
-let match_single_pat pat input bindings = 
+let rec match_patterns pat pats input bindings = 
   match input with
-      [] -> (fail, input)
-    | i :: ri when segment_pattern_p pat -> (fail, input)
+      [] -> fail
+    | i :: ri when segment_pattern_p pat -> segment_match pat pats input bindings 0
     | i :: ri -> 
-      if variable_p pat then (match_variable pat i bindings, ri)
-      else if pat = i then (bindings, ri) 
-      else (fail, input)
-
+      if variable_p pat then 
+        let b2 = match_variable pat i bindings in
+        pat_match pats ri b2
+      else if pat = i then pat_match pats ri bindings 
+      else fail
 (** Match pattern against input in the context of the bindings. *)
-let rec pat_match pattern input bindings = 
+and pat_match pattern input bindings = 
   if bindings = fail then fail
   else match pattern with
       [] -> if input = [] then bindings else fail
-    | p :: ps -> let bs, inp = match_single_pat p input bindings in
-                 pat_match ps inp bs
+    | p :: ps -> match_patterns p ps input bindings
+(** Shumbawumba *)
+and segment_match var pats input bindings start = 
+  match pats with
+      [] -> match_variable var (Util.join input) bindings
+    | p :: ps -> 
+      try 
+        let pos = Util.position p input start in
+        let b' = match_variable var (Util.join (Util.take input pos)) bindings in
+        let b2 = pat_match pats (Util.drop input pos) b' in
+        if b2 = fail then segment_match var pats input bindings (pos+1)
+        else b2
+      with Not_found -> fail
 
 let eliza () = ()
