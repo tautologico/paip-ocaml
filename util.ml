@@ -50,3 +50,8 @@ let position i lst start =
       | _ :: ls -> pos_aux ls (c+1) in
   (pos_aux (drop lst start) 0) + start
 
+(** Select a random element from a list. *)
+let random_elt lst = 
+  let l = List.length lst in
+  let i = Random.int l in 
+  List.nth lst i
