@@ -63,14 +63,12 @@ let match_variable var input bindings =
     If pat is not a segment pattern, match pats with the remaining input. *)
 let rec match_patterns pat pats input bindings = 
   match input with
-      [] -> fail
-    | _ :: _ when segment_pattern_p pat -> segment_match pat pats input bindings 0
-    | i :: ri -> 
-      if variable_p pat then 
-        let b2 = match_variable pat i bindings in
-        pat_match pats ri b2
-      else if pat = i then pat_match pats ri bindings 
-      else fail
+      _ when segment_pattern_p pat -> segment_match pat pats input bindings 0
+    | i :: ri when variable_p pat -> 
+         let b2 = match_variable pat i bindings in
+         pat_match pats ri b2
+    | i :: ri when pat = i -> pat_match pats ri bindings 
+    | _ -> fail
 (** Match pattern against input in the context of the bindings. *)
 and pat_match pattern input bindings = 
   if bindings = fail then fail
@@ -89,8 +87,6 @@ and segment_match var pats input bindings start =
         if b2 = fail then segment_match var pats input bindings (pos+1)
         else b2
       with Not_found -> fail
-
-(* TODO: pat_match doesn't match '?*X no ?*Y' against 'no' (no empty bindings for segment variables) *)
 
 (** Type for ELIZA rules. *)
 type rule = { pattern: string list; responses: string list list }
