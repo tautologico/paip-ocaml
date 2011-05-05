@@ -10,6 +10,7 @@
  * 
  *)
 
+(* Compile with ocamlc -o eliza -I .. ../util.cmo eliza1.ml *)
 
 (** Indicates pattern matching failure *)
 let fail = []
@@ -81,7 +82,7 @@ and segment_match var pats input bindings start =
       [] -> match_variable var (Util.join input) bindings
     | p :: ps -> 
       try 
-        let pos = Util.position p input start in
+        let pos = Util.position p input start in  (* assume no 2 vars occur in pattern in sequence *) 
         let b' = match_variable var (Util.join (Util.take input pos)) bindings in
         let b2 = pat_match pats (Util.drop input pos) b' in
         if b2 = fail then segment_match var pats input bindings (pos+1)
@@ -128,8 +129,10 @@ let eliza_rules =
       ~responses:["What other feelings do you have?"] 
   ]
 
-let default_eliza_resp = "Sorry, what?"
-let default_eliza_rule = mkrule ~pattern:"" ~responses:[default_eliza_resp]
+let default_eliza_rule = 
+  mkrule ~pattern:"" ~responses:["Tell me more about this";
+                                 "You were saying...";
+                                 ]
 
 (** Change I to you and vice versa, and so on. *)
 let switch_viewpoint bindings = 
@@ -157,6 +160,3 @@ let eliza () =
   loop ()
 
 let _ = eliza ()
-
-
-  
