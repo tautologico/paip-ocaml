@@ -26,7 +26,7 @@ let get_binding var bindings = List.assoc var bindings
 
 (** Add a (var, value) pair to a binding list *)
 let extend_bindings var value bindings = 
-  if bindings = fail then [(var, value)] 
+  if bindings = no_bindings then [(var, value)] 
   else (var, value) :: bindings
 
 (** Effects substitution in lst given a binding list.
