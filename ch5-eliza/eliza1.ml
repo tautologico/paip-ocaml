@@ -24,18 +24,10 @@ let variable_p s = (s.[0] = '?')
 (** Find a (var, value) pair in a binding list *)
 let get_binding var bindings = List.assoc var bindings
 
-(** Get the value part of a single binding *)
-let binding_val = snd (*** TODO: need it? ***)
-
-(** Get the value part (for var) from a binding list *)
-let lookup var bindings = (*** TODO: need it? ***)
-  get_binding var bindings
-
 (** Add a (var, value) pair to a binding list *)
 let extend_bindings var value bindings = 
-  match bindings with
-      [("", "")] -> [(var, value)]   (*** Duplication! ***)
-    | _ -> (var, value) :: bindings
+  if bindings = fail then [(var, value)] 
+  else (var, value) :: bindings
 
 (** Effects substitution in lst given a binding list.
     Raises Not_found if the pattern contains variables without any bindings. *)
