@@ -55,3 +55,22 @@ let random_elt lst =
   let l = List.length lst in
   let i = Random.int l in 
   List.nth lst i
+
+(** A string formed by n repetitions of string s. *)
+let repstr s n =
+  let rec loop i acc = 
+    if i = 0 then acc else loop (i-1) (acc ^ s) in
+  loop n ""
+
+(** Concatenate n repetitions of s, separated by sep. *)
+let repsep s n sep = 
+  let rec loop i acc = 
+    if i = 1 then acc ^ s else loop (i-1) (s ^ sep ^ acc) in
+  loop n ""
+
+(** Concatenate all strings in ss, separated by sep. *)
+let rec concatsep ss sep = 
+  match ss with 
+      [] -> "" 
+    | [s] -> s 
+    | s :: rss -> s ^ sep ^ (concatsep rss sep)
