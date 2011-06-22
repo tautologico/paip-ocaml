@@ -1,0 +1,6 @@
+# ignore object files
+*.cmo
+*.cma
+*.cmi
+*.cmx
+*.cmxa
